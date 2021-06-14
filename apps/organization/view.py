@@ -51,7 +51,7 @@ def add_organization():
         return "True"
 
 
-@organization_bp.route('/organization/show_organization', methods=["GET"])
+@organization_bp.route('/organization/show_organization', methods=["GET", "POST"])
 def show_organization():
     organization_type = request.args.get("organization_type")
     organization_list = []

@@ -70,17 +70,33 @@ class Hospital(db.Model):    # 医院
 
 class Warehouse(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    realname = db.Column(db.String(20), nullable=False)
+    name = db.Column(db.String(20), nullable=False, unique=True)  # 仓库名称
+    province = db.Column(db.String(20), nullable=False)
+    city = db.Column(db.String(20), nullable=False)
+    country = db.Column(db.String(20))
     # 一对多关系：一个物流公司对应多个仓库
     # logistics_id 对应物流公司的id
     logistics_id = db.Column(db.Integer, db.ForeignKey('logistics.id'), nullable=False)
+
+    def __init__(self, name="none", logistics_id=0, province="none", city="none", country="none"):
+        self.name = name
+        self.province = province
+        self.city = city
+        self.country = country
+        self.logistics_id = logistics_id
 
 
 class Vehicle(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     licence = db.Column(db.String(10), nullable=False)
     driver_name = db.Column(db.String(20), nullable=False)
-    driver_id_number = db.Column(db.String(18), nullable=False)
+    driver_phone = db.Column(db.String(11), nullable=False)
     # 一对多关系：一个物流公司对应多个车辆
     # logistics_id 对应物流公司的id
     logistics_id = db.Column(db.Integer, db.ForeignKey('logistics.id'), nullable=False)
+
+    def __init__(self, licence="none", logistics_id="none", driver_name="none", driver_phone="none"):
+        self.licence = licence
+        self.logistics_id = logistics_id
+        self.driver_name = driver_name
+        self.driver_phone = driver_phone

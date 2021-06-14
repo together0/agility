@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import and_
 
-from apps.user.model import Move_manager, Hospital_manager, Move_operator, Hospital_operator, Recipient, Person
+from apps.organization.model import Warehouse, Vehicle
+from apps.user.model import Move_manager, Hospital_manager, Move_operator, Hospital_operator, Recipient, Person, \
+    Supervisor
 from ext import db
 
 user_bp = Blueprint('user', __name__)
@@ -9,6 +11,12 @@ user_bp = Blueprint('user', __name__)
 
 @user_bp.route('/user/add_manager', methods=["POST"])
 def add_manager():
+    """
+        function : 增加一个管理员
+        params:
+            organization_type: 物流的管理员（2）,医院的管理员(3)
+    :return: 增加是否成功
+    """
     realname = request.form.get("realname")
     phone = request.form.get("phone")
     id_number = request.form.get("id_number")
@@ -34,6 +42,12 @@ def add_manager():
 
 @user_bp.route('/user/add_operator_or_recipient', methods=["POST"])
 def add_operator_or_recipient():
+    """
+        function : 增加一个操作员或者接种人员  （注册操作）
+        params:
+            person_type: 接种人员（1），物流的操作员（2）,医护人员(3)
+    :return: 增加是否成功
+    """
     realname = request.form.get("realname")
     phone = request.form.get("phone")
     id_number = request.form.get("id_number")
@@ -62,12 +76,15 @@ def add_operator_or_recipient():
 
 @user_bp.route('/user/login', methods=["POST"])
 def login():
+    """
+        function: 用户登录
+    :param:
+        person_type: ['物流管理员-1','医院管理员-2','物流操作员-3','医护人员-4','接种人员-5','监管部门-6']
+    :return:
+    """
     phone = request.form.get("phone")
     password = request.form.get("password")
     person_type = request.form.get("person_type")
-    print("-------------")
-    print(phone, password, person_type)
-    print("-------------")
 
     person = Person()
     if person_type == "1":  # "物流管理员--1"
@@ -78,15 +95,102 @@ def login():
                                                     Hospital_manager.password == password)).first()
     elif person_type == "3":  # "物流操作员--3"
         person = Move_operator.query.filter(and_(Move_operator.phone == phone,
-                                                 Move_operator.password == password)).first()
+                                                 Move_operator.password == password,
+                                                 Move_operator.status == 1)).first()
     elif person_type == "4":  # "医护人员--4"
         person = Hospital_operator.query.filter(and_(Hospital_operator.phone == phone,
-                                                     Hospital_operator.password == password)).first()
-    else:  # "接种人员--5"
+                                                     Hospital_operator.password == password,
+                                                     Hospital_operator.status == 1)).first()
+    elif person_type == "5":  # "接种人员--5"
         person = Recipient.query.filter(and_(Recipient.phone == phone,
                                              Recipient.password == password)).first()
+    elif person_type == "6":  # 监管部门
+        person = Supervisor.query.filter(and_(Supervisor.phone == phone,
+                                         Supervisor.password == password)).first()
+
     if person is None:
         return "False"
     else:
-        print(person.realname, person.phone, person.password, person.id_number)
         return jsonify(person.to_json())
+
+
+# 查询某个状态的操作员
+@user_bp.route('/user/movemanager/findOperatorByStatus', methods=["POST"])
+def findOperatorByStatus():
+    """
+        function：物流管理者查询某个状态（未审批、批准、拒绝）下的所有操作员
+    :param
+        operator_status : 操作员状态
+        logistics_id： 哪个物流公司下的操作员，根据前端登录的物流管理员决定
+    :return:
+    """
+    operator_status = int(request.form.get("operator_status"))
+    logistics_id = int(request.form.get("logistics_id"))
+    operators = Move_operator.query.filter(and_(Move_operator.status == operator_status,
+                                                Move_operator.logistics_id == logistics_id)).all()
+    results = []
+    for operator in operators:
+        # 通过遍历结果集 我们将每一条记录转化为json
+        results.append(operator.to_json())
+    return jsonify(results=results)
+
+
+# 批准/拒绝操作员的注册请求
+@user_bp.route('/user/movemanager/agree_or_disagree', methods=["POST"])
+def agree_or_disagree():
+    operator_id = request.form.get("operator_id")
+    operator_status = int(request.form.get("operator_status"))
+    operator = Move_operator.query.get(operator_id)
+    operator.status = operator_status
+    try:
+        db.session.commit()
+    except Exception as e:
+        return "False"
+    else:
+        return "True"
+
+
+@user_bp.route('/user/movemanager/addWarehouse', methods=["POST"])
+def addWarehouse():
+    """
+        function：物流管理员增加仓库
+    :param:
+        logistics_id: 哪一家物流公司的仓库
+    :return:
+    """
+    name = request.form.get("name")  # 仓库名称
+    logistics_id = request.form.get("logistics_id")
+    province = request.form.get("province")
+    city = request.form.get("city")
+    country = request.form.get("country")
+    warehouse = Warehouse(name, logistics_id, province, city, country)
+    try:
+        db.session.add(warehouse)
+        db.session.commit()
+    except Exception as e:
+        return "False"
+    else:
+        return "True"
+
+
+@user_bp.route('/user/movemanager/addVehicle', methods=["POST"])
+def addVehicle():
+    """
+        function：物流管理员增加运输车辆
+    :param:
+        logistics_id: 哪一家物流公司的车辆
+    :return:
+    """
+    licence = request.form.get("licence")    # 车牌号
+    logistics_id = request.form.get("logistics_id")
+    driver_name = request.form.get("driver_name")
+    driver_phone = request.form.get("driver_phone")
+
+    vehicle = Vehicle(licence, logistics_id, driver_name, driver_phone)
+    try:
+        db.session.add(vehicle)
+        db.session.commit()
+    except Exception as e:
+        return "False"
+    else:
+        return "True"

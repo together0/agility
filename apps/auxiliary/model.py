@@ -24,3 +24,9 @@ class Vac_record(db.Model):   # 疫苗的接种记录
     operate_date = db.Column(db.DATETIME, default=datetime.now)  # 接种时间
 
 
+class First_second_mapping(db.Model):
+    # id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    second_trace_code = db.Column(db.String(30), primary_key=True)
+    first_trace_code = db.Column(db.Integer, db.ForeignKey('vaccine.id'))
+
+
