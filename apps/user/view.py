@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
 from sqlalchemy import and_
 
+from apps.auxiliary.model import Move_record, First_second_mapping
 from apps.organization.model import Warehouse, Vehicle
 from apps.user.model import Move_manager, Hospital_manager, Move_operator, Hospital_operator, Recipient, Person, \
     Supervisor
+from apps.vaccine.model import Vaccine
 from ext import db
 
 user_bp = Blueprint('user', __name__)
@@ -40,30 +42,74 @@ def add_manager():
         return "True"
 
 
-@user_bp.route('/user/add_operator_or_recipient', methods=["POST"])
-def add_operator_or_recipient():
+@user_bp.route('/user/add_moveoperator', methods=["POST"])
+def add_moveoperator():
     """
-        function : 增加一个操作员或者接种人员  （注册操作）
-        params:
-            person_type: 接种人员（1），物流的操作员（2）,医护人员(3)
-    :return: 增加是否成功
+    :function
+        增加物流操作员 （注册操作）
+    :return
+        增加是否成功
     """
     realname = request.form.get("realname")
     phone = request.form.get("phone")
     id_number = request.form.get("id_number")
     password = request.form.get("password")
-    oid = request.form.get("oid")
-    person_type = request.form.get("person_type")
+    warehouse_id = request.form.get("warehouse_id")
+    logistics_id = request.form.get("logistics_id")
 
-    if person_type == "1":
-        recipient = Recipient(realname, phone, password, id_number)
-        db.session.add(recipient)
-    elif person_type == "2":
-        move_operator = Move_operator(realname, phone, password, id_number, oid)
-        db.session.add(move_operator)
-    elif person_type == "3":
-        hospital_operator = Hospital_operator(realname, phone, password, id_number, oid)
-        db.session.add(hospital_operator)
+    move_operator = Move_operator(realname, phone, password, id_number, warehouse_id, logistics_id)
+    db.session.add(move_operator)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        return "False"
+    else:
+        return "True"
+
+
+@user_bp.route('/user/add_doctor', methods=["POST"])
+def add_doctor():
+    """
+    :function
+        增加医护人员  （注册操作）
+    :return
+        增加是否成功
+    """
+    realname = request.form.get("realname")
+    phone = request.form.get("phone")
+    id_number = request.form.get("id_number")
+    password = request.form.get("password")
+    hospital_id = request.form.get("hospital_id")
+
+    hospital_operator = Hospital_operator(realname, phone, password, id_number, hospital_id)
+    db.session.add(hospital_operator)
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(e)
+        return "False"
+    else:
+        return "True"
+
+
+@user_bp.route('/user/add_recipient', methods=["POST"])
+def add_recipient():
+    """
+    :function
+        增加一个操作员或者接种人员  （注册操作）
+    :return
+        增加是否成功
+    """
+    realname = request.form.get("realname")
+    phone = request.form.get("phone")
+    id_number = request.form.get("id_number")
+    password = request.form.get("password")
+
+    recipient = Recipient(realname, phone, password, id_number)
+    db.session.add(recipient)
 
     try:
         db.session.commit()
@@ -106,7 +152,7 @@ def login():
                                              Recipient.password == password)).first()
     elif person_type == "6":  # 监管部门
         person = Supervisor.query.filter(and_(Supervisor.phone == phone,
-                                         Supervisor.password == password)).first()
+                                              Supervisor.password == password)).first()
 
     if person is None:
         return "False"
@@ -181,7 +227,7 @@ def addVehicle():
         logistics_id: 哪一家物流公司的车辆
     :return:
     """
-    licence = request.form.get("licence")    # 车牌号
+    licence = request.form.get("licence")  # 车牌号
     logistics_id = request.form.get("logistics_id")
     driver_name = request.form.get("driver_name")
     driver_phone = request.form.get("driver_phone")
@@ -194,3 +240,105 @@ def addVehicle():
         return "False"
     else:
         return "True"
+
+
+@user_bp.route('/user/moveoperator/in_warehouse', methods=["POST"])
+def in_warehouse():
+    """
+        function：入库操作
+    :param:
+        warehouse_id: 进入的哪一个仓库
+        vehicle_id: 使用的哪一个车辆
+        operator_id: 操作者的ID
+        trace_code_list: 追溯码(一级、二级都可以有)
+    :return:
+        成功/失败
+    """
+    warehouse_id = request.form.get("warehouse_id")
+    vehicle_id = request.form.get("vehicle_id")
+    operator_id = request.form.get("operator_id")
+    trace_code_list = request.form.get("trace_code_list").split(",")
+
+    # 所有疫苗的ID
+    vaccine_ids = []
+    for trace_code in trace_code_list:
+        if len(trace_code) == 32:  # 一级追溯码
+            vaccine = Vaccine.query.filter(Vaccine.first_trace_code == trace_code).first()
+            vaccine_ids.append(vaccine.id)
+        elif len(trace_code) == 33:  # 二级追溯码
+            mappings = First_second_mapping.query.filter(First_second_mapping.second_trace_code == trace_code).all()
+            for mapping in mappings:
+                vaccine_ids.append(mapping.vaccine_id)
+        else:
+            raise Exception("追溯码出错")
+
+    records = []
+    for vaccine_id in vaccine_ids:
+        record = Move_record(vaccine_id=vaccine_id, warehouse_id=warehouse_id,
+                             vehicle_id=vehicle_id, operator_id=operator_id,
+                             status=False)
+        records.append(record)
+
+    try:
+        db.session.bulk_save_objects(records)
+        db.session.commit()
+    except Exception as e:
+        return "False"
+    else:
+        return "True"
+
+
+@user_bp.route('/user/moveoperator/out_warehouse', methods=["POST"])
+def out_warehouse():
+    """
+        function：出库操作
+    :param:
+        warehouse_id: 哪一个仓库
+        vehicle_id: 使用哪一个车辆
+        operator_id: 操作者的ID
+        trace_code_list: 追溯码（一级、二级都可能出现）
+    :return:
+        成功/失败
+    """
+    warehouse_id = request.form.get("warehouse_id")
+    vehicle_id = request.form.get("vehicle_id")
+    operator_id = request.form.get("operator_id")
+    trace_code_list = request.form.get("trace_code_list").split(",")
+    # 判断所有输入的疫苗是否存在于该仓库中，如果都存在可以出库，否则跳过出库操作，返回错误信息
+    is_exist = True
+
+    vaccine_ids = []
+    for trace_code in trace_code_list:
+        if len(trace_code) == 32:  # 一级追溯码
+            vaccine = Vaccine.query.filter(Vaccine.first_trace_code == trace_code).first()
+            if vaccine is None:
+                is_exist = False
+                break
+            vaccine_ids.append(vaccine.id)
+        elif len(trace_code) == 33:  # 二级追溯码
+            mappings = First_second_mapping.query.filter(First_second_mapping.second_trace_code == trace_code).all()
+            if len(mappings) == 0:
+                is_exist = False
+                break
+            for mapping in mappings:
+                vaccine_ids.append(mapping.vaccine_id)
+        else:
+            raise Exception("追溯码出错")
+
+    if is_exist:
+        records = []
+        for vaccine_id in vaccine_ids:
+            record = Move_record(vaccine_id=vaccine_id, warehouse_id=warehouse_id,
+                                 vehicle_id=vehicle_id, operator_id=operator_id,
+                                 status=1)
+            records.append(record)
+
+        try:
+            db.session.bulk_save_objects(records)
+            db.session.commit()
+        except Exception as e:
+            return "False"
+        else:
+            return "True"
+    else:
+        return "not_exist"

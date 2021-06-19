@@ -57,10 +57,13 @@ class Hospital_manager(Person):  # 医院管理者
 class Move_operator(Person):
     status = db.Column(db.Integer, default=0)  # 注册申请是否通过 0:未处理，1:通过，2:拒绝
     # 一对多关系：一个物流公司对应多个操作员
+    warehouse_id = db.Column(db.Integer, db.ForeignKey('warehouse.id'), nullable=False)
+    # 物流公司的ID
     logistics_id = db.Column(db.Integer, db.ForeignKey('logistics.id'), nullable=False)
 
-    def __init__(self, realname, phone, password, id_number, logistics_id):
+    def __init__(self, realname, phone, password, id_number, warehouse_id, logistics_id):
         super().__init__(realname, phone, password, id_number)
+        self.warehouse_id = warehouse_id
         self.logistics_id = logistics_id
 
 

@@ -3,15 +3,7 @@ from datetime import datetime
 from ext import db
 
 
-class Producer(db.Model):     # 生产机构
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    organization_name = db.Column(db.String(80), nullable=False)
-    realname = db.Column(db.String(40), nullable=False)
-    phone = db.Column(db.String(11), nullable=False)
-    province = db.Column(db.String(20), nullable=False)
-    city = db.Column(db.String(20), nullable=False)
-    country = db.Column(db.String(20), nullable=False)
-
+class ObjectToJson:
     def to_json(self):
         """将实例对象转化为json"""
         item = self.__dict__
@@ -20,9 +12,19 @@ class Producer(db.Model):     # 生产机构
         return item
 
 
-class Logistics(db.Model):   # 物流公司
+class Producer(db.Model, ObjectToJson):     # 生产机构
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     organization_name = db.Column(db.String(80), nullable=False)
+    realname = db.Column(db.String(40), nullable=False)
+    phone = db.Column(db.String(11), nullable=False)
+    province = db.Column(db.String(20), nullable=False)
+    city = db.Column(db.String(20), nullable=False)
+    country = db.Column(db.String(20), nullable=False)
+
+
+class Logistics(db.Model, ObjectToJson):   # 物流公司
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    organization_name = db.Column(db.String(80), nullable=False, unique=True)
     realname = db.Column(db.String(40), nullable=False)
     phone = db.Column(db.String(11), nullable=False)
     province = db.Column(db.String(20), nullable=False)
@@ -39,17 +41,10 @@ class Logistics(db.Model):   # 物流公司
     # 一对多关系：一个物流公司对应多个操作员
     operators = db.relationship('Move_operator', backref='logistics')
 
-    def to_json(self):
-        """将实例对象转化为json"""
-        item = self.__dict__
-        if "_sa_instance_state" in item:
-            del item["_sa_instance_state"]
-        return item
 
-
-class Hospital(db.Model):    # 医院
+class Hospital(db.Model, ObjectToJson):    # 医院
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    organization_name = db.Column(db.String(80), nullable=False)
+    organization_name = db.Column(db.String(80), nullable=False, unique=True)
     realname = db.Column(db.String(40), nullable=False)
     phone = db.Column(db.String(11), nullable=False)
     province = db.Column(db.String(20), nullable=False)
@@ -60,20 +55,15 @@ class Hospital(db.Model):    # 医院
     # 一对多关系：一个医院对应多个医护人员
     operators = db.relationship('Hospital_operator', backref='hospital')
 
-    def to_json(self):
-        """将实例对象转化为json"""
-        item = self.__dict__
-        if "_sa_instance_state" in item:
-            del item["_sa_instance_state"]
-        return item
 
-
-class Warehouse(db.Model):
+class Warehouse(db.Model, ObjectToJson):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(20), nullable=False, unique=True)  # 仓库名称
     province = db.Column(db.String(20), nullable=False)
     city = db.Column(db.String(20), nullable=False)
     country = db.Column(db.String(20))
+    # 一对多关系：一个仓库对应多个操作员
+    operators = db.relationship('Move_operator', backref='warehouse')
     # 一对多关系：一个物流公司对应多个仓库
     # logistics_id 对应物流公司的id
     logistics_id = db.Column(db.Integer, db.ForeignKey('logistics.id'), nullable=False)
@@ -86,7 +76,7 @@ class Warehouse(db.Model):
         self.logistics_id = logistics_id
 
 
-class Vehicle(db.Model):
+class Vehicle(db.Model, ObjectToJson):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     licence = db.Column(db.String(10), nullable=False)
     driver_name = db.Column(db.String(20), nullable=False)
@@ -100,3 +90,4 @@ class Vehicle(db.Model):
         self.logistics_id = logistics_id
         self.driver_name = driver_name
         self.driver_phone = driver_phone
+
