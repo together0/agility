@@ -1,8 +1,10 @@
 import uuid
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 
-from apps.auxiliary.model import First_second_mapping
+from apps.auxiliary.model import First_second_mapping, Move_record, Record
+from apps.organization.model import Producer, Warehouse, Vehicle
+from apps.user.model import Move_operator
 from apps.vaccine.model import Vaccine
 from ext import db
 
@@ -85,45 +87,40 @@ def pack_vaccine():
         return "True"
 
 
-@vaccine_bp.route('/vaccine/trace', methods=["POST"])
-def trace():
+@vaccine_bp.route('/vaccine/trace_by_supervisor', methods=["POST", "GET"])
+def trace_by_supervisor():
     """
-    :function: 追踪疫苗（记录生产机构、运输记录、接种记录）
+    :function:
+        追踪疫苗（记录生产机构、运输记录、接种记录）, 监督部门使用
     :params
         first_trace_code： 一级别追溯码
     :return:
     """
-    uid = uuid.uuid4()
-    uidStr = str(uid)
-    second_trace_code = "_" + uidStr.replace('-', '')
 
-    trace_code_list = request.form.get("trace_code_list").split(",")
-    mapping_list = []  # 映射记录
-    vaccine_ids = []
-    for first_trace_code in trace_code_list:
-        vaccine = Vaccine.query.filter(Vaccine.first_trace_code == first_trace_code).first()
-        mapping = First_second_mapping()
-        mapping.second_trace_code = second_trace_code
-        mapping.vaccine_id = vaccine.id
-        mapping_list.append(mapping)
-        vaccine_ids.append(vaccine.id)
+    # first_trace_code = request.form.get("first_trace_code")
+    first_trace_code = "b4297d95a67440eabda2bad17b862656"
 
-    try:
-        db.session.bulk_save_objects(mapping_list)
-        db.session.commit()
+    # 查询生产机构
+    vaccine = Vaccine.query.filter(Vaccine.first_trace_code == first_trace_code).first()
+    producer = Producer.query.get(vaccine.producer_id).to_json()
 
-        # 把之间的打包删除掉
-        for vaccine_id in vaccine_ids:
-            mappings = First_second_mapping.query.filter(First_second_mapping.vaccine_id == vaccine_id)\
-                .order_by(-First_second_mapping.operate_date).all()
+    # 查询运输记录
+    records = Move_record.query.filter(Move_record.vaccine_id == vaccine.id).order_by(Move_record.in_out_date).all()
+    move_records = []
+    for record in records:
+        warehouse = Warehouse.query.get(record.warehouse_id)
+        print("*************************************")
+        print(warehouse.name)
+        vehicle = Vehicle.query.get(record.vehicle_id)
+        operator = Move_operator.query.get(record.operator_id)
+        print("-----------------------------")
+        print(operator.realname)
+        record = Record(warehouse, vehicle, operator, record.in_out_date, record.status)
+        move_records.append(record.to_json())
+        break
+    # 查询接种记录
+    print(producer)
+    print(move_records)
 
-            if len(mappings) > 1:
-                for mapping in mappings[1:]:
-                    db.session.delete(mapping)
-                    db.session.commit()
-
-    except Exception as e:
-        print(e)
-        return "False"
-    else:
-        return "True"
+    return "aabbcc"
+    # return jsonify(producer=producer, move_records=move_records)
