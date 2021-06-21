@@ -61,7 +61,7 @@ class Move_operator(Person):
     # 物流公司的ID
     logistics_id = db.Column(db.Integer, db.ForeignKey('logistics.id'), nullable=False)
 
-    def __init__(self, realname, phone, password, id_number, warehouse_id, logistics_id):
+    def __init__(self, realname=None, phone=None, password=None, id_number=None, warehouse_id=None, logistics_id=None):
         super().__init__(realname, phone, password, id_number)
         self.warehouse_id = warehouse_id
         self.logistics_id = logistics_id

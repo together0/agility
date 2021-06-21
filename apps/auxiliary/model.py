@@ -17,7 +17,7 @@ class Record(ObjectToJson):
     """
         一条运输记录，包括仓库、运输工具、操作者，使用类对象初始化，然后转换为JSON格式。
     """
-    def __init__(self, warehouse, vehicle, operator, in_out_date, status=0):
+    def __init__(self, warehouse, vehicle, operator, in_out_date, status, record_id):
         """
         :param warehouse:
         :param vehicle:
@@ -25,10 +25,15 @@ class Record(ObjectToJson):
         :param in_out_date: 入库 / 出库的时间
         :param status: 该记录是出库记录还是入库记录，默认是入库
         """
+        self.record_id = record_id
         self.warehouse = warehouse.to_json()
-        self.vehicle = vehicle.to_json()
-        self.operator = operator.to_json()
-        self.in_out_date = in_out_date
+        self.warehouse_name = warehouse.name
+        self.warehouse_id = warehouse.id
+        self.vehicle_licence = vehicle.licence
+        self.vehicle_id = vehicle.id
+        self.operator_name = operator.realname
+        self.operator_id = operator.id
+        self.in_out_date = in_out_date.strftime("%Y-%m-%d %H:%M:%S")
         self.status = status
 
 

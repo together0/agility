@@ -29,6 +29,12 @@ class Vaccine(db.Model):
         self.person_num = person_num
         self.producer_id = producer_id
 
+    def to_json(self):
+        """将实例对象转化为json"""
+        item = self.__dict__
+        if "_sa_instance_state" in item:
+            del item["_sa_instance_state"]
+        return item
 
 
 

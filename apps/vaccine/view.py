@@ -105,22 +105,21 @@ def trace_by_supervisor():
     producer = Producer.query.get(vaccine.producer_id).to_json()
 
     # 查询运输记录
-    records = Move_record.query.filter(Move_record.vaccine_id == vaccine.id).order_by(Move_record.in_out_date).all()
+    temp_move_records = Move_record.query.filter(Move_record.vaccine_id == vaccine.id)\
+        .order_by(Move_record.in_out_date).all()
     move_records = []
-    for record in records:
-        warehouse = Warehouse.query.get(record.warehouse_id)
-        print("*************************************")
-        print(warehouse.name)
-        vehicle = Vehicle.query.get(record.vehicle_id)
-        operator = Move_operator.query.get(record.operator_id)
-        print("-----------------------------")
-        print(operator.realname)
-        record = Record(warehouse, vehicle, operator, record.in_out_date, record.status)
-        move_records.append(record.to_json())
-        break
-    # 查询接种记录
-    print(producer)
-    print(move_records)
+    for move_record in temp_move_records:
+        warehouse = Warehouse()
+        vehicle = Vehicle()
+        operator = Move_operator()
+        warehouse = Warehouse.query.get(move_record.warehouse_id)
+        vehicle = Vehicle.query.get(move_record.vehicle_id)
+        operator = Move_operator.query.get(move_record.operator_id)
+        new_move_record = Record(warehouse, vehicle, operator,
+                                 move_record.in_out_date, move_record.status, move_record.id)
+        move_records.append(new_move_record.to_json())
 
-    return "aabbcc"
-    # return jsonify(producer=producer, move_records=move_records)
+    vaccine.produce_date = vaccine.produce_date.strftime("%Y-%m-%d %H:%M:%S")
+    vaccine = vaccine.to_json()
+    # 查询接种记录
+    return jsonify(vaccine=vaccine, producer=producer, move_records=move_records)
