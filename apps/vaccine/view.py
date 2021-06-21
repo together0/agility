@@ -97,8 +97,8 @@ def trace_by_supervisor():
     :return:
     """
 
-    # first_trace_code = request.form.get("first_trace_code")
-    first_trace_code = "b4297d95a67440eabda2bad17b862656"
+    first_trace_code = request.form.get("first_trace_code")
+    # first_trace_code = "b4297d95a67440eabda2bad17b862656"
 
     # 查询生产机构
     vaccine = Vaccine.query.filter(Vaccine.first_trace_code == first_trace_code).first()
