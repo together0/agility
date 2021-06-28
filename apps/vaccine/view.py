@@ -1,10 +1,11 @@
 import uuid
 
 from flask import Blueprint, request, jsonify
+from sqlalchemy import and_
 
-from apps.auxiliary.model import First_second_mapping, Move_record, Record
-from apps.organization.model import Producer, Warehouse, Vehicle
-from apps.user.model import Move_operator
+from apps.auxiliary.model import First_second_mapping, Move_record, Vac_record, Transportation, Vaccination
+from apps.organization.model import Producer, Warehouse, Vehicle, Hospital
+from apps.user.model import Move_operator, Hospital_operator, Recipient
 from apps.vaccine.model import Vaccine
 from ext import db
 
@@ -115,11 +116,53 @@ def trace_by_supervisor():
         warehouse = Warehouse.query.get(move_record.warehouse_id)
         vehicle = Vehicle.query.get(move_record.vehicle_id)
         operator = Move_operator.query.get(move_record.operator_id)
-        new_move_record = Record(warehouse, vehicle, operator,
+        transportation = Transportation(warehouse, vehicle, operator,
                                  move_record.in_out_date, move_record.status, move_record.id)
-        move_records.append(new_move_record.to_json())
+        move_records.append(transportation.to_json())
+
+    # 查询接种记录
+    temp_vac_records = Vac_record.query.filter(Vac_record.vaccine_id == vaccine.id)\
+        .order_by(Vac_record.operate_date).all()
+    vac_records = []
+    for vac_record in temp_vac_records:
+        doctor = Hospital_operator()
+        recipient = Recipient()
+        vaccine = Vaccine()
+        doctor = Hospital_operator.query.get(vac_record.doctor_id)
+        recipient = Recipient.query.get(vac_record.recipient_id)
+        vaccine = Vaccine.query.get(vac_record.vaccine_id)
+        vaccination = Vaccination(vac_record.id, vac_record.operate_date, doctor, recipient, vaccine)
+        vac_records.append(vaccination.to_json())
 
     vaccine.produce_date = vaccine.produce_date.strftime("%Y-%m-%d %H:%M:%S")
     vaccine = vaccine.to_json()
-    # 查询接种记录
-    return jsonify(vaccine=vaccine, producer=producer, move_records=move_records)
+
+    return jsonify(vaccine=vaccine, producer=producer,
+                   move_records=move_records, vac_records=vac_records)
+
+
+@vaccine_bp.route('/vaccine/trace_by_recipient', methods=["POST", "GET"])
+def trace_by_recipient():
+    """
+    :function:
+        追踪疫苗（记录疫苗名称、生产机构、接种日期、接种医院）, 接种者使用
+    :params
+        idcard： 身份证
+    :return:
+    """
+
+    idcard = request.form.get("idcard")
+
+    recipient = Recipient.query.filter(Recipient.id_number == idcard).first()  # 接种者
+    temp_vac_records = Vac_record.query.filter(and_(Vac_record.recipient_id == recipient.id,
+                                 Vac_record.status == 1)).all()     # 接种记录
+    vac_records = []
+    for vac_record in temp_vac_records:
+        doctor = Hospital_operator()
+        vaccine = Vaccine()
+        doctor = Hospital_operator.query.get(vac_record.doctor_id)
+        vaccine = Vaccine.query.get(vac_record.vaccine_id)
+        vaccination = Vaccination(vac_record.id, vac_record.operate_date, doctor=doctor, vaccine=vaccine)
+        vac_records.append(vaccination.to_json())
+
+    return jsonify(recipient=recipient.to_json(), vac_records=vac_records)

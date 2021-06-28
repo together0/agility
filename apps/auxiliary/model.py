@@ -13,7 +13,7 @@ class ObjectToJson:
         return item
 
 
-class Record(ObjectToJson):
+class Transportation(ObjectToJson):
     """
         一条运输记录，包括仓库、运输工具、操作者，使用类对象初始化，然后转换为JSON格式。
     """
@@ -35,6 +35,29 @@ class Record(ObjectToJson):
         self.operator_id = operator.id
         self.in_out_date = in_out_date.strftime("%Y-%m-%d %H:%M:%S")
         self.status = status
+
+
+class Vaccination (ObjectToJson):
+    """
+        一条接种记录，包括医院、医生、时间。
+    """
+    def __init__(self, record_id, operate_date, doctor=None, recipient=None, vaccine=None):
+        """
+        :param doctor: 接种医生
+        :param operate_date: 接种时间
+        """
+        self.record_id = record_id
+        self.operate_date = operate_date.strftime("%Y-%m-%d %H:%M:%S")
+        if doctor is not None:
+            self.doctor_name = doctor.realname
+            self.doctor_phone = doctor.phone
+            self.hospital_name = doctor.hospital.organization_name
+        if recipient is not None:
+            self.recipient_name = recipient.realname
+            self.recipient_idcard = recipient.id_number
+            self.recipient_phone = recipient.phone
+        if vaccine is not None:
+            self.vaccine_name = vaccine.name
 
 
 # 疫苗的入库和出库操作记录
@@ -64,29 +87,18 @@ class Move_record(db.Model, ObjectToJson):   # 疫苗的入库和出库记录
         )
 
 
-# 疫苗到达医院的记录表（疫苗到达医院的记录表）
-class Hospital_record(db.Model, ObjectToJson):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    vaccine_id = db.Column(db.Integer, db.ForeignKey('vaccine.id'))   # 疫苗的ID
-    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'))  # 医院的ID
-    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicle.id'))   # 运输车辆ID
-    operator_id = db.Column(db.Integer, db.ForeignKey('hospital_manager.id'))  # 操作者ID (医院的管理者)
-    in_date = db.Column(db.DATETIME, default=datetime.now)  # 到达医院的时间
-
-    def __init__(self, vaccine_id, hospital_id, vehicle_id, operator_id):
-        self.vaccine_id = vaccine_id
-        self.hospital_id = hospital_id
-        self.vehicle_id = vehicle_id
-        self.operator_id = operator_id
-
-
 # 疫苗的接种记录
 class Vac_record(db.Model, ObjectToJson):   # 疫苗的接种记录
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     vaccine_id = db.Column(db.Integer, db.ForeignKey('vaccine.id'))
     recipient_id = db.Column(db.Integer, db.ForeignKey('recipient.id'))
     doctor_id = db.Column(db.Integer, db.ForeignKey('hospital_operator.id'))
-    operate_date = db.Column(db.DATETIME, default=datetime.now)  # 接种时间
+    status = db.Column(db.Integer, default=0)  # 1-已经接种  0-未接种
+    operate_date = db.Column(db.DATETIME)  # 接种时间
+
+    def __init__(self, recipient_id, doctor_id):
+        self.recipient_id = recipient_id
+        self.doctor_id = doctor_id
 
 
 # 一级追溯码和二级追溯码的对应表

@@ -32,8 +32,16 @@ class Supervisor(Person):  # 监督部门
 
 
 class Recipient(Person):  # 接种者
-    def __init__(self, realname, phone, password, id_number):
-        super().__init__(realname, phone, password, id_number)
+    gender = db.Column(db.Integer, default=0)  # 1-男，0-女
+    reservation_code = db.Column(db.String(32), nullable=False)
+    hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
+    status = db.Column(db.Integer, default=0)  # 1-接种完成，0-未接种
+
+    def __init__(self, realname=None, phone=None, id_number=None, gender=None, reservation_code=None, hospital_id=None):
+        super().__init__(realname, phone, password="1", id_number=id_number)
+        self.gender = gender
+        self.reservation_code = reservation_code
+        self.hospital_id = hospital_id
 
 
 class Move_manager(Person):  # 物流管理者
@@ -72,10 +80,9 @@ class Hospital_operator(Person):  # 医护人员
     # 一对多关系：一个医院对应多个医护人员
     hospital_id = db.Column(db.Integer, db.ForeignKey('hospital.id'), nullable=False)
 
-    def __init__(self, realname, phone, password, id_number, hospital_id):
+    def __init__(self, realname=None, phone=None, password=None, id_number=None, hospital_id=None):
         super().__init__(realname, phone, password, id_number)
         self.hospital_id = hospital_id
-
 
 # class Person(db.Model):
 #     __abstract__ = True
